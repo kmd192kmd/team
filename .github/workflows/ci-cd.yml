@@ -47,7 +47,8 @@ jobs:
         name: deploy-files
         path: |
           docker-compose.yml
-          scripts/init.sql        
+          scripts/init.sql
+          nginx.conf
         
   deploy:
     needs: build
@@ -79,7 +80,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           # [수정됨] 콤마로 구분된 한 줄로 변경
-          source: "docker-compose.yml,scripts/init.sql"
+          source: "docker-compose.yml,scripts/init.sql,nginx.conf"
           target: "/home/ubuntu/my-project"
 
       # 4. EC2에 SSH로 접속하여 배포 스크립트를 실행합니다.
@@ -102,9 +103,22 @@ jobs:
             
             # 3. docker-compose.yml을 기반으로 기존 컨테이너와 *볼륨*을 삭제합니다. > 그냥 수동 삭제하자
             # sudo docker compose down -v
+            sudo docker compose down
             
             # 4. 새 컨테이너를 시작합니다. (oracle이 script.sql을 실행)
             sudo docker compose up -d
+            
+            #sudo docker compose up -d oracle
+
+            #until [ "$(sudo docker inspect -f '{{.State.Health.Status}}' oracle)" = "healthy" ]; do
+            #  echo "waiting oracle..."
+            #  sleep 5
+            #done
+
+            #echo "oracle healthy. wait more for Oracle/PDB/init stabilization..."
+            #sleep 30
+
+            sudo docker compose up -d --force-recreate team
             
             # 5. 사용하지 않는 Docker 이미지를 정리합니다. 시간이 너무 오래 걸린다.
             # sudo docker image prune -f
